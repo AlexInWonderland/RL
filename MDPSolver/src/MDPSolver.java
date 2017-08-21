@@ -1,0 +1,90 @@
+import burlap.oomdp.auxiliary.DomainGenerator;
+import burlap.oomdp.core.Domain;
+import burlap.oomdp.core.TerminalFunction;
+import burlap.oomdp.core.states.State;
+import burlap.oomdp.singleagent.GroundedAction;
+import burlap.oomdp.singleagent.RewardFunction;
+import burlap.oomdp.statehashing.SimpleHashableStateFactory;
+import burlap.oomdp.auxiliary.common.NullTermination;
+import burlap.behavior.singleagent.planning.stochastic.valueiteration.ValueIteration;
+import burlap.domain.singleagent.graphdefined.GraphDefinedDomain;
+
+public class MDPSolver {
+	
+	DomainGenerator dg;
+    Domain domain;
+    State initState;
+    RewardFunction rf;
+    TerminalFunction tf;
+    SimpleHashableStateFactory hashFactory;
+    int numStates;
+    int numActions;
+    double[][][] probabilitiesOfTransitions;
+    //static double[][][] rewards;
+    
+	public MDPSolver(int numStates, int numActions, 
+			double[][][] probabilitiesOfTransitions, double[][][] rewards){
+		   
+		   this.numStates = numStates;
+		   this.numActions = numActions;
+		   this.probabilitiesOfTransitions = probabilitiesOfTransitions;
+		   //this.rewards = rewards;
+		   this.dg = new GraphDefinedDomain(this.numStates);
+		   for (int i = 0; i < numStates; i++ ){
+			 for(int j = 0; j < numActions; j++){ 
+				 for (int k = 0; k < numStates; k++)
+		            ((GraphDefinedDomain)this.dg).setTransition(i, j, k, 
+		        		                            probabilitiesOfTransitions[i][j][k]);
+		     }
+		   }
+		   this.domain = this.dg.generateDomain();
+		   this.initState = GraphDefinedDomain.getState(this.domain, 0);
+	       this.rf = new FourParamRF(rewards);
+	       this.tf = new NullTermination();
+	       this.hashFactory = new SimpleHashableStateFactory();
+	}
+	
+	private ValueIteration computeValue(double gamma){
+	       double maxDelta = 0.0001;
+	       int maxIteration = 1000;
+	       ValueIteration vi = new ValueIteration(this.domain, this.rf, this.tf, gamma, this.hashFactory, maxDelta, maxIteration );
+	       vi.planFromState(this.initState);
+	       return vi;
+   }
+	
+	
+	public static class FourParamRF implements RewardFunction {
+		double p1;
+		double p2;
+		double[][][] rewards;
+		public FourParamRF(double[][][] rewards) {
+			this.rewards = rewards;
+		}
+		
+		@Override
+        // TODO:
+		// Override the reward method to match the reward scheme from the state diagram.
+		// See the documentation for the RewardFunction interface for the proper signature.
+		// You may find the getNodeId method from GraphDefinedDomain class helpful.
+		public double reward(State s, GroundedAction a, State sprime){
+			int sid = GraphDefinedDomain.getNodeId(s);
+			int spid = GraphDefinedDomain.getNodeId(sprime);
+		    //System.out.println("sid: " + sid + "spid " + spid);
+			return rewards[sid][Integer.parseInt(a.actionName().substring(6))][spid];
+		}
+    }
+	
+	
+	
+	public double valueOfState(int state, double gamma){
+		ValueIteration vi = computeValue(gamma);
+	    double []v = new double[this.numStates]; 
+	    for (int i = 0; i < this.numStates; i++){
+	    	State s = GraphDefinedDomain.getState(this.domain, i);
+	        System.out.println(vi.value(s));
+	        v[i] = vi.value(s);
+	    }
+		return v[state];
+	}
+
+}

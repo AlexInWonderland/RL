@@ -1,0 +1,13 @@
+
+public class MDPSolver {
+	public MDPSolver(int numStates, int numActions, 
+			double[][][] probabilitiesOfTransitions, double[][][] rewards){
+		
+		
+	}
+	
+	public double valueOfState(int state, double gamma){
+		
+	}
+
+}
